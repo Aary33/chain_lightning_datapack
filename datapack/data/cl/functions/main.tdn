@@ -1,0 +1,251 @@
+@ on compile
+@ priority 0.0
+
+global var MAX_BOLT_COUNT : int = 3
+global var MAX_JOINT_COUNT : int = 5
+global var NEW_JOINT_INTERVAL : real = 2.5
+global var RAYCAST_STEP : real = 0.25
+global var ZAP_TIME : int = 9
+
+global var OBJ_AGE : string = "cl.age"
+
+global var OBJ_BOLT_COUNT : string = "cl.boltCount"
+global var OBJ_RAYCAST_STEP_COUNT : string = "cl.raycastStep"
+global var OBJ_JOINT_COUNT : string = "cl.jointCount"
+global var OBJ_ZAP_TIME : string = "cl.zap"
+global var OBJ_ZAP_EFFECT_FRAME : string = "cl.zapFrame"
+
+
+define objective $OBJ_AGE dummy [{"text":"[cl] ","color":"aqua"},{"text":"Entity Age"}]
+
+define objective $OBJ_BOLT_COUNT dummy [{"text":"[cl] ","color":"aqua"},{"text":"Lightning Spell Bolt Count"}]
+define objective $OBJ_RAYCAST_STEP_COUNT dummy [{"text":"[cl] ","color":"aqua"},{"text":"Lightning Spell Raycast Limiter"}]
+define objective $OBJ_JOINT_COUNT dummy [{"text":"[cl] ","color":"aqua"},{"text":"Lightning Spell Joint Limiter"}]
+
+define objective $OBJ_ZAP_TIME dummy [{"text":"[cl] ","color":"aqua"},{"text":"Lightning Spell Zap Time"}]
+define objective $OBJ_ZAP_EFFECT_FRAME dummy [{"text":"[cl] ","color":"aqua"},{"text":"Lightning Spell Effect Frame"}]
+
+global var TAG_ZAP : string = "cl.zap"
+
+define item burnt_zombie_body minecraft:stick#9810810{
+    function give { give @s ${this} }
+    default name [
+        { "text" : "Burnt Zombie Body", "color" : "white", "italic":false}
+        
+    ]
+    default lore [
+        { "text" : "It smells.", "color" : "dark_purple", "italic":false}
+    ]
+    default nbt {
+        HideFlags: 31
+    }
+}
+define item burnt_zombie_arm minecraft:stick#9810811{
+    function give { give @s ${this} }
+    default name [
+        { "text" : "Burnt Zombie Body", "color" : "white", "italic":false}
+        
+    ]
+    default lore [
+        { "text" : "It smells.", "color" : "dark_purple", "italic":false}
+    ]
+    default nbt {
+        HideFlags: 31
+    }
+}
+
+define entity burnt_zombie minecraft:armor_stand {
+    default nbt {     
+        Tags:["new"],
+        Invisible:1b,
+        Invulnerable:1b,
+        PersistenceRequired:1b,
+        NoBasePlate:1b,
+        NoGravity:1b,
+        ShowArms:1b,
+        Marker:1b,
+        ArmorItems:[
+            {},
+            {},
+            {},
+            {id:${(string)burnt_zombie_body.baseType},Count:1b,tag:${burnt_zombie_body.getItemTag()}}
+        ],
+        HandItems:[
+            {id:${(string)burnt_zombie_arm.baseType},Count:1b,tag:${burnt_zombie_body.getItemTag()}},
+            {id:${(string)burnt_zombie_arm.baseType},Count:1b,tag:${burnt_zombie_body.getItemTag()}}
+        ],
+        DisabledSlots:4144959,
+        Pose: {LeftArm:[270f,0f],RightArm:[270f,0f]}
+    }
+    function birth {
+        tag @s remove new
+    }
+    function death {
+        kill @s
+    }
+    function summon {
+        summon $this ~ ~ ~
+    }
+    ticking function tick {
+        var death = 60
+        set @s->$OBJ_AGE += 1
+        if score @s $OBJ_AGE matches 1
+        function ${this.birth}
+        if score @s $OBJ_AGE matches $death..
+        function ${this.death}
+    }
+}
+
+define item lightning_spell minecraft:carrot_on_a_stick#9810800{
+    default name [
+        { "text" : "Lightning Spell", "color" : "white", "italic":false}
+        
+    ]
+    default lore [
+        { "text" : "Casts a bolt of chain", "color" : "dark_purple", "italic":false},
+        { "text" : "lightning.", "color" : "dark_purple", "italic":false}
+    ]
+    default nbt {
+        HideFlags: 31
+    }
+    
+    function give { give @s ${this} }
+    
+    function joint {
+        set @s->$OBJ_RAYCAST_STEP_COUNT = ${(int) (NEW_JOINT_INTERVAL / RAYCAST_STEP)}
+        function ${this.raycast}
+    }
+    
+    function new_joint {
+        function ${Random.range(1, 100)}
+        set @s->$OBJ_JOINT_COUNT -= 1
+        if score ${Random.POINTER_OUT.target} ${Random.POINTER_OUT.member} matches 1..20 rotated ~19 ~-6 run function ${this.joint}
+        if score ${Random.POINTER_OUT.target} ${Random.POINTER_OUT.member} matches 21..40 rotated ~-21 ~-7 run function ${this.joint}
+        if score ${Random.POINTER_OUT.target} ${Random.POINTER_OUT.member} matches 41..60 rotated ~ ~18 run function ${this.joint}
+        if score ${Random.POINTER_OUT.target} ${Random.POINTER_OUT.member} matches 61..80 rotated ~-19 ~9 run function ${this.joint}
+        if score ${Random.POINTER_OUT.target} ${Random.POINTER_OUT.member} matches 81..100 rotated ~25 ~-11 run function ${this.joint}
+    }
+    
+    function raycast {
+        set @s->$OBJ_RAYCAST_STEP_COUNT -= 1
+        
+        particle minecraft:soul_fire_flame ~ ~ ~ 0 0 0 0 1 force
+        particle minecraft:glow ~ ~ ~ 0 0 0 0.1 1 force
+        # particle minecraft:dust_color_transition 0.4 0.9 1.0 1.0 0.2 0.2 0.2 ~ ~ ~ 0 0 0 0 1 force
+        
+        positioned ~-0.25 ~-1.0 ~-0.25
+        as @e[type=#cl:zappable_mobs,dx=0.5,dy=2,dz=0.5,tag=!$TAG_ZAP] at @s
+        function collide_with_mob {
+            tag @s add $TAG_ZAP
+        }
+        
+        unless block ^ ^ ^$RAYCAST_STEP #cl:passable
+        function collide_with_block {
+            particle minecraft:cloud ~ ~ ~ 0.02 0.02 0.02 0.1 5 force
+            particle minecraft:smoke ~ ~ ~ 0.02 0.02 0.02 0.1 5 force
+            # particle minecraft:electric_spark ~ ~ ~ 0.1 0.1 0.1 1.0 10 force
+        }
+        
+        if score @s $OBJ_RAYCAST_STEP_COUNT matches 1
+        if score @s $OBJ_JOINT_COUNT matches 1..
+        positioned ^ ^ ^$RAYCAST_STEP
+        function ${this.new_joint}
+        
+        if score @s $OBJ_RAYCAST_STEP_COUNT matches 1..
+        positioned ^ ^ ^$RAYCAST_STEP
+        if block ~ ~ ~ #cl:passable
+        function /
+    }
+    
+    function raycast_start {
+        set @s->$OBJ_BOLT_COUNT -= 1
+        
+        set @s->$OBJ_JOINT_COUNT = $MAX_JOINT_COUNT
+        set @s->$OBJ_RAYCAST_STEP_COUNT = ${(int) (NEW_JOINT_INTERVAL / RAYCAST_STEP)}
+        
+        anchored eyes
+        positioned ^-0.25 ^ ^
+        rotated ~-2.5 ~
+        function ${this.raycast}
+    }
+    
+    on used function used {
+        playsound minecraft:entity.lightning_bolt.thunder player @s ~ ~ ~ 2 2.0
+        set @s->$OBJ_BOLT_COUNT = $MAX_BOLT_COUNT
+    }
+    
+}
+
+define function zap {
+    
+}
+
+define function tick {
+    @ tag tick
+    #lightning formation based off design from u/squidgga
+    #random util library based off of CloudWolf's #lcg
+    
+    as @a[scores={$OBJ_BOLT_COUNT=1..}] at @s
+    function ${lightning_spell.raycast_start}
+    
+    as @e[type=#cl:zappable_mobs]
+    set @s->$OBJ_AGE += 1
+    
+    as @e[type=#cl:zappable_mobs] at @s
+    function zap_status {
+        if @s[scores={$OBJ_ZAP_TIME=1..}]
+        set @s->$OBJ_ZAP_TIME -= 1
+        
+        if @s[tag=$TAG_ZAP]
+        function start {
+            set @s->$OBJ_ZAP_TIME = $ZAP_TIME
+            tag @s remove $TAG_ZAP
+            effect give @s minecraft:instant_health 1 1 true
+        }
+        
+        if @s[scores={$OBJ_ZAP_TIME=1..}]
+        function effect {
+            # spread
+            if @s[scores={$OBJ_ZAP_TIME=$ZAP_TIME..}]
+            as @e[type=#cl:zappable_mobs,distance=0.001..2.5]
+            function spread {
+                unless score @s $OBJ_ZAP_TIME isset
+                tag @s add $TAG_ZAP
+                if score @s $OBJ_ZAP_TIME matches 0
+                tag @s add $TAG_ZAP
+            }
+            
+            set @s->$OBJ_ZAP_EFFECT_FRAME = @s->$OBJ_AGE
+            set @s->$OBJ_ZAP_EFFECT_FRAME %= 3
+            
+            if score @s $OBJ_ZAP_EFFECT_FRAME matches 0
+            function frame_0 {
+                teleport @s ~ ~ ~ ~-45 ~-30
+                data merge entity @s {NoAI:1b,Glowing:1b}
+                #effect give @s minecraft:invisibility 1 0 true
+                
+                #summon $burnt_zombie ~ ~ ~
+                at @s as @e[type=$burnt_zombie,limit=1,tag=new]
+                teleport @s ~ ~ ~ ~ ~
+            }
+            if score @s $OBJ_ZAP_EFFECT_FRAME matches 2
+            function frame_2 {
+                teleport @s ~ ~ ~ ~45 ~30
+                #effect clear @s minecraft:invisibility
+                data merge entity @s {NoAI:0b,Glowing:0b}
+            }
+            particle minecraft:electric_spark ~ ~1.0 ~ 0.25 0.25 0.25 1.0 1 force
+        }
+        unless score @s $OBJ_ZAP_TIME matches 1..
+        function end {
+            data merge entity @s {NoAI:0b,Glowing:0b}
+            set @s->$OBJ_ZAP_TIME = null
+        }
+    }
+}
+
+define function load {
+    @ tag load
+    
+    eval Random.init()
+}

@@ -1,0 +1,110 @@
+@ on compile
+@ priority 5.0
+
+global var OBJECTIVE_UTIL_CONSTANT : string = "util.constant"
+global var OBJECTIVE_UTIL_MATH : string = "util.math"
+define objective $OBJECTIVE_UTIL_CONSTANT dummy [{"text":"constant","color":"green","italic":true}]
+define objective $OBJECTIVE_UTIL_MATH dummy [{"text":"util ","color":"yellow","italic":false},{"text":"math","color":"green","italic":true}]
+define entity uuid_generator minecraft:marker {}
+
+define class Random {
+    public static final var LCG_CONSTANT : int = 1103515245
+    public static final var LCG_ADD_CONSTANT : int = 12345
+    public static final var DEFAULT_IN : int = 1
+    public static final var DEFAULT_IN1 : int = 100
+    
+    public static final var POINTER_IN1 : pointer = pointer<in1->$OBJECTIVE_UTIL_MATH>
+    public static final var POINTER_IN : pointer = pointer<in->$OBJECTIVE_UTIL_MATH>
+    public static final var POINTER_RANGE : pointer = pointer<#range->$OBJECTIVE_UTIL_MATH>
+    public static final var POINTER_M1 : pointer = pointer<#m1->$OBJECTIVE_UTIL_MATH>
+    public static final var POINTER_OUT : pointer = pointer<out->$OBJECTIVE_UTIL_MATH>
+    public static final var POINTER_TEMP : pointer = pointer<#temp->$OBJECTIVE_UTIL_MATH>
+    public static final var POINTER_TEMP1 : pointer = pointer<#temp1->$OBJECTIVE_UTIL_MATH>
+    public static final var POINTER_TEMP2 : pointer = pointer<#temp2->$OBJECTIVE_UTIL_MATH>
+    public static final var POINTER_LCG : pointer = pointer<#lcg->$OBJECTIVE_UTIL_MATH>
+    public static final var POINTER_LCG_CONSTANT : pointer = pointer<#lcg->$OBJECTIVE_UTIL_CONSTANT>
+    
+    public static final var SELECTOR_UUID : entity = entity<@e[type=$uuid_generator,limit=1]>
+    
+    private static lcg() : resource {
+        function lcg {
+            set $POINTER_LCG *= $POINTER_LCG_CONSTANT
+            set $POINTER_LCG += $LCG_ADD_CONSTANT
+            set $POINTER_OUT = $POINTER_LCG
+        
+            return resource</>
+        }
+    }
+    
+    private static nextInt() : resource {
+        function next_int {
+            function ${lcg()}
+            set $POINTER_TEMP = $POINTER_OUT
+            set $POINTER_OUT %= $POINTER_RANGE
+            set $POINTER_TEMP -= $POINTER_OUT
+            set $POINTER_TEMP += $POINTER_M1
+            if score ${POINTER_TEMP.target} ${POINTER_TEMP.member} matches ..-1 function /
+            
+            return resource</>
+        }
+    }
+    
+    public static range() : resource {
+        function range {
+            set $POINTER_IN1 += 1
+            set $POINTER_RANGE = $POINTER_IN1
+            set $POINTER_RANGE -= $POINTER_IN
+            
+            set $POINTER_M1 = $POINTER_RANGE
+            set $POINTER_M1 -= 1
+            function ${nextInt()}
+            set $POINTER_OUT += $POINTER_IN
+            
+            set $POINTER_M1 = null
+            set $POINTER_IN1 -= 1
+            
+            return resource</>
+        }
+    }
+    
+    public static range(min : int, max : int) : resource {
+        function ${new resource("range_"+min+"_"+max)} {
+            set $POINTER_IN = $min
+            set $POINTER_IN1 = $max
+            function ${range()}
+            return resource</>
+        }
+    }
+    
+    private static UUIDReset() : resource {
+        function uuid_reset {
+            summon $uuid_generator
+            set $POINTER_LCG = ${pointer<$SELECTOR_UUID.UUID[0]>}
+            set $POINTER_TEMP = ${pointer<$SELECTOR_UUID.UUID[1]>}
+            set $POINTER_TEMP1 = ${pointer<$SELECTOR_UUID.UUID[2]>}
+            set $POINTER_TEMP2 = ${pointer<$SELECTOR_UUID.UUID[3]>}
+            
+            set $POINTER_LCG += $POINTER_TEMP
+            set $POINTER_LCG += $POINTER_TEMP1
+            set $POINTER_LCG += $POINTER_TEMP2
+            
+            kill $SELECTOR_UUID
+            
+            return resource</>
+        }
+    }
+    
+    public static init() {
+        function init {
+            set $POINTER_IN = $DEFAULT_IN 
+            set $POINTER_IN1 = $DEFAULT_IN1
+            set $POINTER_LCG_CONSTANT = $LCG_CONSTANT
+            
+            unless score ${POINTER_LCG.target} ${POINTER_LCG.member} isset
+            function ${UUIDReset()}
+            # function reset {
+            #     eval UUIDReset()
+            # }
+        }
+    }
+}

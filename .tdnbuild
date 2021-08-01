@@ -1,0 +1,21 @@
+{
+  "input-resources": "(automatically selected by Trident-UI)",
+  "output": {
+    "directories": {
+      "data-pack": "C:\\Users\\a1zepeda\\AppData\\Roaming\\.minecraft\\saves\\ChainLightning\\datapacks\\chain_lightning-datapack",
+      "resource-pack": "C:\\Users\\a1zepeda\\AppData\\Roaming\\.minecraft\\saves\\ChainLightning\\resources.zip"
+    },
+    "clean-directories": {
+      "data-pack": true,
+      "resource-pack": true
+    },
+    "export-comments": true,
+    "export-gamelog": true
+  },
+  "trident-ui": {
+    "actions": {
+      "pre": [],
+      "post": []
+    }
+  }
+}

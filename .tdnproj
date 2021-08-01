@@ -1,0 +1,19 @@
+{
+  "target-version": [
+    1,
+    17,
+    0
+  ],
+  "default-namespace": "cl",
+  "language-level": 3,
+  "strict-nbt": true,
+  "strict-text-components": true,
+  "anonymous-function-name": "_anonymous*",
+  "using-all-plugins": false,
+  "game-logger": {
+    "compact": false,
+    "timestamp-enabled": true,
+    "pos-enabled": true,
+    "line-number-enabled": false
+  }
+}

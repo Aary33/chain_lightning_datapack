@@ -1,0 +1,10 @@
+@on compile
+@priority 5.0
+
+eval Tags.createTag(
+    "entity",
+    resource<#cl:zappable_mobs>,
+    [
+        resource<minecraft:zombie>
+    ]
+)
